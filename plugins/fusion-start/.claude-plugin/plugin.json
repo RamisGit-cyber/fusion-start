@@ -1,8 +1,8 @@
 {
   "name": "fusion-start",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Fusion Старт",
-  "description": "Базовый набор Claude Code от Fusion AI: claude-mem, Superpowers, ECC, graphify, Agent Reach, навыки дизайна и браузер Playwright",
+  "description": "Базовый набор Claude Code от Fusion AI: claude-mem, Superpowers, ECC, graphify, Agent Reach, Context7, навыки дизайна, анимаций, видео и документов, браузер Playwright",
   "author": {
     "name": "Fusion AI"
   },

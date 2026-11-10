@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fusion Старт 1.0: ставит базовый набор Claude Code скриптом хука SessionStart.
+# Fusion Старт 1.1: ставит базовый набор Claude Code скриптом хука SessionStart.
 #
 # Зачем скрипт, а не команды Claude: в Claude Desktop команды Claude идут в песочнице,
 # и она запрещает писать в ~/.claude (навыки и плагины) и в ~/.claude.json (MCP).
@@ -17,7 +17,7 @@
 case "$(uname -s 2>/dev/null)" in Darwin|Linux|MINGW*|MSYS*|CYGWIN*) ;; *) exit 0 ;; esac
 umask 077
 
-KIT_VERSION="1.0.0"
+KIT_VERSION="1.1.0"
 STATE_DIR="$HOME/.fusion-start"
 STATE="$STATE_DIR/nabor.json"
 LOCK="$STATE_DIR/nabor.lock"
@@ -26,6 +26,11 @@ LOG="$STATE_DIR/nabor.log"
 # --- закреплённые источники (проверены 10.11.2026) ---
 SKILLS_CLI="skills@1.7.6"
 PLAYWRIGHT_MCP="@playwright/mcp@0.0.84"
+CONTEXT7_MCP="@upstash/context7-mcp@4.5.1" # upstash/context7 (MIT): свежая документация библиотек, без ключа
+HYPERFRAMES_SHA="b4cc674f7f312e77ded32e0b53006cc0bad6723b" # heygen-com/hyperframes, тег v0.9.19
+REMOTION_SHA="c7cb2fdcacd134fb2ccb9b7a44f9ffa44e467271"    # remotion-dev/skills
+GSAP_SHA="aed9cfd3277740755f6bfc1155c7aa645403b760"        # greensock/gsap-skills (MIT)
+ANTHROPIC_SKILLS_SHA="2c5958ecac7cee2b583967a2c4981d0f4a75c579" # anthropics/skills: pdf, docx, pptx, xlsx
 MCP_PREFIX="$STATE_DIR/mcp" # сюда ставится Playwright MCP, чтобы Claude запускал его по абсолютному пути
 AR_URL="https://github.com/Panniantong/Agent-Reach/releases/download/v1.6.1/agent-reach.zip"
 AR_SHA256="51443d733bcb26064262442083a8f8abf6ba5e3e7df54beebafe98c88be04a60"
@@ -180,14 +185,21 @@ run_mode() {
   fi
 
   # --- навык из закреплённого коммита (без символических ссылок в чужом репозитории) ---
-  skill_pinned() { # репозиторий коммит навык маркер
-    local repo="$1" sha="$2" skill="$3" marker="$4" dir="$work/$4"
+  skill_pinned() { # репозиторий коммит навыки(через пробел или *) маркер
+    local repo="$1" sha="$2" skill="$3" marker="$4" dir="$work/$4" skill_args
+    read -r -a skill_args <<<"$skill"
     if has_skill "$marker"; then ok "$marker"; return; fi
     : >"$log"
     if [ "$node_ok" -ne 1 ] || [ "$git_ok" -ne 1 ]; then fail "$marker" "нужны git и Node 22.20 или новее"; return; fi
     git -c protocol.file.allow=never clone -q --no-recurse-submodules "https://github.com/$repo.git" "$dir" >>"$log" 2>&1 && git -C "$dir" checkout -q "$sha" >>"$log" 2>&1 || { fail "$marker" "не скачалось"; return; }
-    if [ -n "$(find "$dir" -type l -not -path '*/.git/*' 2>/dev/null | head -1)" ]; then fail "$marker" "в репозитории символические ссылки"; return; fi
-    limited 300 npx --yes "$SKILLS_CLI" add "$dir" --skill "$skill" -g -a claude-code -y --copy >>"$log" 2>&1
+    # Ссылки CLAUDE.md и GEMINI.md на AGENTS.md в корне (так у greensock/gsap-skills) безвредны и не копируются;
+    # папка packages/ (исходники инструментов HyperFrames) не устанавливается. Любая другая ссылка — отказ.
+    if [ -n "$(find "$dir" -type l -not -path '*/.git/*' -not -path "$dir/packages/*" -not \( -path "$dir/CLAUDE.md" -o -path "$dir/GEMINI.md" \) 2>/dev/null | head -1)" ] \
+      || { [ -L "$dir/CLAUDE.md" ] && [ "$(readlink "$dir/CLAUDE.md")" != "AGENTS.md" ]; } \
+      || { [ -L "$dir/GEMINI.md" ] && [ "$(readlink "$dir/GEMINI.md")" != "AGENTS.md" ]; }; then
+      fail "$marker" "в репозитории символические ссылки"; return
+    fi
+    limited 300 npx --yes "$SKILLS_CLI" add "$dir" --skill "${skill_args[@]}" -g -a claude-code -y --copy >>"$log" 2>&1
     if has_skill "$marker"; then done_ "$marker"; else fail "$marker" "npx skills add"; fi
   }
 
@@ -195,19 +207,28 @@ run_mode() {
   skill_pinned pbakaus/impeccable 9fadc41729c38fd47d7ae622b501558653f9d2e9 impeccable impeccable
   skill_pinned emilkowalski/skills f1090bec277140d02ed202440185ad9d02ac1490 emil-design-eng emil-design-eng
   skill_pinned blader/humanizer 0ef9fe5bc3572734fd3ae6c448fe00a30cd5dcf0 humanizer humanizer
+  # 1.1: анимации, видео, документы
+  skill_pinned emilkowalski/skills f1090bec277140d02ed202440185ad9d02ac1490 "apple-design animate animation-vocabulary find-animation-opportunities improve-animations" apple-design
+  skill_pinned greensock/gsap-skills "$GSAP_SHA" "gsap-core gsap-frameworks gsap-performance gsap-plugins gsap-react gsap-scrolltrigger gsap-timeline gsap-utils" gsap-core
+  skill_pinned heygen-com/hyperframes "$HYPERFRAMES_SHA" "hyperframes hyperframes-cli hyperframes-registry media-use" hyperframes
+  skill_pinned remotion-dev/skills "$REMOTION_SHA" '*' remotion-best-practices
+  skill_pinned anthropics/skills "$ANTHROPIC_SKILLS_SHA" "pdf docx pptx xlsx" pdf
 
   # --- плагины Claude Code ---
   if [ -z "$claude_bin" ]; then
     fail superpowers "команда claude не найдена"; fail claude-mem "команда claude не найдена"; fail ecc "команда claude не найдена"
   else
-    # Superpowers: официальный маркетплейс Anthropic
-    if plugin_ready "$claude_bin" superpowers@claude-plugins-official; then ok superpowers
-    else
-      : >"$log"
-      limited 90 "$claude_bin" plugin marketplace add anthropics/claude-plugins-official >>"$log" 2>&1
-      limited 180 "$claude_bin" plugin install superpowers@claude-plugins-official >>"$log" 2>&1
-      plugin_ready "$claude_bin" superpowers@claude-plugins-official && done_ superpowers || fail superpowers "claude plugin install"
-    fi
+    # Официальный маркетплейс Anthropic: Superpowers, frontend-design, security-guidance
+    local official
+    for official in superpowers frontend-design security-guidance; do
+      if plugin_ready "$claude_bin" "$official@claude-plugins-official"; then ok "$official"
+      else
+        : >"$log"
+        limited 90 "$claude_bin" plugin marketplace add anthropics/claude-plugins-official >>"$log" 2>&1
+        limited 180 "$claude_bin" plugin install "$official@claude-plugins-official" >>"$log" 2>&1
+        plugin_ready "$claude_bin" "$official@claude-plugins-official" && done_ "$official" || fail "$official" "claude plugin install"
+      fi
+    done
 
     # claude-mem: память между сессиями, маркетплейс автора на закреплённом теге
     if plugin_ready "$claude_bin" claude-mem@thedotmack; then ok claude-mem
@@ -245,6 +266,19 @@ run_mode() {
     is_windows && [ -f "$pw_bin.cmd" ] && pw_bin="$pw_bin.cmd"
     [ -e "$pw_bin" ] && limited 60 "$claude_bin" mcp add --scope user playwright -- "$pw_bin" >>"$log" 2>&1
     has_mcp playwright && done_ playwright || fail playwright "claude mcp add playwright"
+  fi
+
+  # --- Context7 MCP: свежая документация библиотек (ставится в свою папку, как Playwright) ---
+  if has_mcp context7; then ok context7
+  elif [ -z "$claude_bin" ]; then fail context7 "команда claude не найдена"
+  elif [ "$node_ok" -ne 1 ]; then fail context7 "нужен Node 22.20 или новее"
+  else
+    : >"$log"
+    mkdir -p "$MCP_PREFIX" && limited 300 npm install --prefix "$MCP_PREFIX" --ignore-scripts --no-audit --no-fund "$CONTEXT7_MCP" >>"$log" 2>&1
+    local c7_bin="$MCP_PREFIX/node_modules/.bin/context7-mcp"
+    is_windows && [ -f "$c7_bin.cmd" ] && c7_bin="$c7_bin.cmd"
+    [ -e "$c7_bin" ] && limited 60 "$claude_bin" mcp add --scope user context7 -- "$c7_bin" >>"$log" 2>&1
+    has_mcp context7 && done_ context7 || fail context7 "claude mcp add context7"
   fi
 
   # --- graphify: карта знаний по папке (CLI через uv, навык регистрирует сам graphify) ---

@@ -23,6 +23,12 @@ description: Набор «Fusion Старт» — что в нём стоит, �
 | emil-design-eng | детали и анимации, сайт «дорогой» | emilkowalski/skills |
 | humanizer | живой текст без «ИИ-стиля» | blader/humanizer |
 | Playwright | свой браузер: открыть сайт, нажать, проверить | @playwright/mcp 0.0.84 |
+| Context7 | свежая документация библиотек, чтобы не выдумывать код | @upstash/context7-mcp 4.5.1 |
+| frontend-design, security-guidance | красивые сайты; проверка безопасности кода | официальный маркетплейс Anthropic |
+| apple-design, animate и др. | плавные анимации и движение в интерфейсах | emilkowalski/skills |
+| GSAP (8 навыков) | анимации сайтов, скролл, таймлайны | greensock/gsap-skills |
+| HyperFrames, Remotion | видео кодом: ролики, титры, анимация | heygen-com/hyperframes, remotion-dev/skills |
+| pdf, docx, pptx, xlsx | PDF, Word, PowerPoint, Excel | anthropics/skills |
 | uv | менеджер Python-инструментов (нужен graphify и Agent Reach) | astral.sh, 0.13.4 |
 
 ECC в режиме Standard: его помощники могут форматировать файлы, запускать проверки и отправлять выжимку разговора во внешнюю модель. Скажи об этом один раз, коротко. Выключить: «выключи плагин ecc».
