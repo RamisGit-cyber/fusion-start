@@ -1,0 +1,14 @@
+{
+  "name": "fusion-start",
+  "description": "Fusion Старт — базовый набор Claude Code, как у клиентов Fusion AI",
+  "owner": {
+    "name": "Fusion AI"
+  },
+  "plugins": [
+    {
+      "name": "fusion-start",
+      "source": "./plugins/fusion-start",
+      "description": "Один плагин ставит базовый набор: память, работа по плану, навыки дизайна, интернет, браузер"
+    }
+  ]
+}

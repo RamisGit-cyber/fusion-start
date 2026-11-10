@@ -1,0 +1,13 @@
+{
+  "name": "fusion-start",
+  "version": "1.0.0",
+  "displayName": "Fusion Старт",
+  "description": "Базовый набор Claude Code от Fusion AI: claude-mem, Superpowers, ECC, graphify, Agent Reach, навыки дизайна и браузер Playwright",
+  "author": {
+    "name": "Fusion AI"
+  },
+  "homepage": "https://github.com/RamisGit-cyber/fusion-start",
+  "repository": "https://github.com/RamisGit-cyber/fusion-start",
+  "license": "MIT",
+  "keywords": ["setup", "starter-kit", "russian"]
+}
